@@ -20,6 +20,26 @@
 
 A complete implementation of **Tier 1** on the [RoboPay](https://github.com/fabricfoundation/RoboPay) protocol: a Boston Dynamics Atlas v4 robot performs a 3-target shelf inspection, where every action is **payment-gated** — the client must prove payment before the robot moves, and settlement happens on-chain only after successful execution.
 
+---
+
+### Full Demo — One Paid Action, End to End
+
+![One paid Atlas action, end to end](projects/robopay/docs/evidence/atlas-paid-action.gif)
+
+*Left pane: the real exchange as it happens — skill and price discovered, the unpaid **402**, the EIP-3009 authorization signed with `keccak256(action_id)` as its nonce, the **202**, the action on Zenoh, the correlated result, and **0.001 USDC settled** with its BaseScan link. Right pane: the episode that payment bought, rendered from inside it — the frames are drawn from a callback on the scored run's own control loop, so the two panes cannot be two different runs that happened to agree.*
+
+Settlement: [`0x7fc1c1ff…b5b197`](https://sepolia.basescan.org/tx/0x7fc1c1ff21e535376bf22b3409b751d769dadfdcb2491d3803c5712905b5b197) — block 45737187
+
+---
+
+### Shelf Inspection — Task Close-Up
+
+![Atlas shelf inspection](projects/robopay/docs/evidence/atlas-shelf-inspection.gif)
+
+*The task close-up, in MuJoCo. Green spheres are the three targets at their tolerance radius; the panel is live telemetry. The renderer refuses to write the GIF unless the annotated episode reproduces the plain one exactly, so the picture and the numbers cannot disagree.*
+
+---
+
 **One continuous pass, nothing edited together:**
 
 | Step | Result |
@@ -222,14 +242,38 @@ Client                    Fabric Relay           Go Tunnel              Zenoh   
 
 ## Settlement Evidence
 
-| Field | Value |
+### Live Settlements (on-chain, verifiable)
+
+| Run | Tx | Block | Amount | Action ID |
+|---|---|---|---|---|
+| Direct Zenoh | [`0x2b3b71d0…c0f39`](https://sepolia.basescan.org/tx/0x2b3b71d0ce18554a4927e1145a704359bad35c209f632dc414926b995aac0f39) | 45706216 | 0.001 USDC | `act-paid-de66513f791b` |
+| Fabric Relay | [`0xfd9eda75…1e6940`](https://sepolia.basescan.org/tx/0xfd9eda75ddc6c6f979eb2571e6e85ef3a6f50d670f3f8ad252107723e21e6940) | 45714728 | 0.001 USDC | `atlas-inspect-1787197727` |
+| CI Runner | [`0x30160596…c5a32`](https://sepolia.basescan.org/tx/0x301605968803a459bcf024c8082d414e0501f2d859c71ddbee87b10ee16c5a32) | 45740066 | 0.001 USDC | `atlas-inspect-1787248406` |
+
+**Verify any settlement yourself:**
+```python
+from web3 import Web3
+nonce = Web3.keccak(text="atlas-inspect-1787197727")
+# Query USDC contract for AuthorizationUsed event with this nonce
+```
+
+### Evidence Artifacts
+
+| Artifact | What it shows |
 |---|---|
-| Action | `act-paid-de66513f791b` |
-| Tx | [`0x2b3b71d0…c0f39`](https://sepolia.basescan.org/tx/0x2b3b71d0ce18554a4927e1145a704359bad35c209f632dc414926b995aac0f39) |
-| Block | 45706216 |
-| Amount | 0.001 USDC |
-| Network | Base Sepolia |
-| Binding | `keccak256(action_id)` = authorization nonce |
+| [`atlas-paid-action.gif`](projects/robopay/docs/evidence/atlas-paid-action.gif) | Full demo: 402 → auth → 202 → Zenoh → execution → settlement |
+| [`atlas-shelf-inspection.gif`](projects/robopay/docs/evidence/atlas-shelf-inspection.gif) | Task close-up with live telemetry |
+| [`real-paid-run.json`](projects/robopay/docs/evidence/real-paid-run.json) | Live facilitator → robot 3/3 → 0.001 USDC |
+| [`fabric-relay-e2e.json`](projects/robopay/docs/evidence/fabric-relay-e2e.json) | Full relay path: discovery → pricing → execution → settlement |
+| [`fabric-relay-failure.json`](projects/robopay/docs/evidence/fabric-relay-failure.json) | Refused action: failed + never charged |
+| [`sim2sim-validation.json`](projects/robopay/docs/evidence/sim2sim-validation.json) | Cross-engine: 3.20 mm spread |
+| [`mujoco-inspection-episode.json`](projects/robopay/docs/evidence/mujoco-inspection-episode.json) | MuJoCo metrics |
+| [`pybullet-inspection-episode.json`](projects/robopay/docs/evidence/pybullet-inspection-episode.json) | PyBullet metrics |
+| [`webots-inspection-episode.json`](projects/robopay/docs/evidence/webots-inspection-episode.json) | Webots metrics |
+| [`go-tunnel-e2e-evidence.json`](projects/robopay/docs/evidence/go-tunnel-e2e-evidence.json) | Unpaid + forged actions refused |
+| [`tunnel-e2e-evidence.json`](projects/robopay/docs/evidence/tunnel-e2e-evidence.json) | Payment-validated action over Zenoh |
+| [`onchain-settlement.json`](projects/robopay/docs/evidence/onchain-settlement.json) | Base Sepolia settlement re-read from RPC |
+| [`reach-envelope.json`](projects/robopay/docs/evidence/reach-envelope.json) | 36-probe sweep the shelf is derived from |
 
 ---
 
